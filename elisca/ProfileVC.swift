@@ -171,40 +171,45 @@ class ProfileVC: UIViewController, UITextFieldDelegate, UITextViewDelegate, UIIm
             if let imageData = profilePhoto.image?.jpegData(compressionQuality: 0.3) {
                 let imageRef = mediaFolder.child("\(currentUser.uid).jpg")
                 imageRef.putData(imageData, metadata: nil) { metadata, error in
-                    if let error = error {
-                        self.showAlert(title: "Error", message: error.localizedDescription)
-                        return
+                    if error != nil {
+                        self.showAlert(title: "Error", message: error!.localizedDescription)
+                    }else {
+                        imageRef.downloadURL { url, error in
+                            if error != nil {
+                                self.showAlert(title: "Error", message: error!.localizedDescription)
+                            }else {
+                                if let imageDataUrl = url?.absoluteString {
+                                    
+                                    // update the profile data in Firestore
+                                    let db = Firestore.firestore()
+                                    let profileRef = db.collection("Profiles").document(currentUser.uid)
+                                    
+                                    let infoProfile = [
+                                        
+                                        "profilePhotoUrl": imageDataUrl,
+                                        "bio": self.bioText.text!,
+                                        "userEmail" : currentUser.email!
+                                        
+                                    ] as [String: Any]
+                        
+                                    profileRef.setData(infoProfile, merge: true) { error in
+                                        if let error = error {
+                                            self.showAlert(title: "Error", message: error.localizedDescription)
+                                        } else {
+                                            self.showAlert(title: "Success", message: "Profile updated successfully")
+                                            
+                                        }
+                                    }
+                                }
+                                
+
+                            }
+                            
+
+                        }
                     }
                     
-                    imageRef.downloadURL { url, error in
-                        if let error = error {
-                            self.showAlert(title: "Error", message: error.localizedDescription)
-                            return
-                        }
-                        
-                        guard let imageDataUrl = url?.absoluteString else { return }
-                        
-                        // Update the profile data in Firestore
-                        let db = Firestore.firestore()
-                        let profileRef = db.collection("Profiles").document(currentUser.uid)
-                        
-                        let infoProfile = [
-                            
-                            "profilePhotoUrl": imageDataUrl,
-                            "bio": self.bioText.text!,
-                            "userEmail" : currentUser.email!
-                            
-                        ] as [String: Any]
-                        
-                        profileRef.setData(infoProfile, merge: true) { error in
-                            if let error = error {
-                                self.showAlert(title: "Error", message: error.localizedDescription)
-                            } else {
-                                self.showAlert(title: "Success", message: "Profile updated successfully")
-                                
-                            }
-                        }
-                    }
+
                 }
             }
             
